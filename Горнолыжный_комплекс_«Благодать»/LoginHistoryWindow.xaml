@@ -1,0 +1,30 @@
+﻿<Window x:Class="Горнолыжный_комплекс__Благодать_.LoginHistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Горнолыжный_комплекс__Благодать_"
+        mc:Ignorable="d"
+       Title="Благодать - История входа" Height="400" Width="600"
+        Background="#FFFFFF" FontFamily="Comic Sans MS">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Image Source="\Images\logo.png"  Height="50" HorizontalAlignment="Left" Margin="10"/>
+        <StackPanel Grid.Row="1" Margin="20">
+            <TextBlock Text="Фильтр по логину" Foreground="#494C51"/>
+            <TextBox x:Name="LoginFilterBox" Margin="0,5" TextChanged="FilterLogin_TextChanged"/>
+            <ListView x:Name="HistoryListView" Margin="0,10">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Время" DisplayMemberBinding="{Binding LoginTime, StringFormat=dd.MM.yyyy HH:mm:ss}"/>
+                        <GridViewColumn Header="Логин" DisplayMemberBinding="{Binding Employee.Login}"/>
+                        <GridViewColumn Header="Статус" DisplayMemberBinding="{Binding LoginStatus}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </StackPanel>
+    </Grid>
+</Window>
