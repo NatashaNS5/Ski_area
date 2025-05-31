@@ -23,7 +23,13 @@
             <Image x:Name="CaptchaImage" Height="50" Visibility="Collapsed" Margin="0,5"/>
             <TextBox x:Name="CaptchaBox" Visibility="Collapsed" Margin="0,5"/>
             <Button x:Name="RegenerateCaptchaButton" Content="Обновить капчу" Visibility="Collapsed" Background="#76E383" Foreground="#FFFFFF" Margin="0,5" Click="RegenerateCaptcha_Click"/>
-            <Button Content="Войти" Background="#498C51" Foreground="#FFFFFF" Margin="0,10" Click="Login_Click"/>
+            <Button Content="Войти" Background="#498C51" Foreground="#FFFFFF" Margin="0,10" Click="Login_Click">
+                <Button.Resources>
+                    <Style TargetType="{x:Type Border}">
+                        <Setter Property="CornerRadius" Value="10"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
             <TextBlock x:Name="ErrorMessage" Foreground="Red" TextAlignment="Center" Visibility="Collapsed"/>
         </StackPanel>
     </Grid>

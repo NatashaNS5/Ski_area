@@ -18,6 +18,12 @@
         <DatePicker x:Name="BirthDatePicker" Margin="0,5"/>
         <TextBlock Text="Адрес" Foreground="#494C51"/>
         <TextBox x:Name="AddressBox" Margin="0,5"/>
-        <Button Content="Сохранить" Background="#498C51" Foreground="#FFFFFF" Margin="0,10" Click="SaveClient_Click"/>
+        <Button Content="Сохранить" Background="#498C51" Foreground="#FFFFFF" Margin="0,10" Click="SaveClient_Click">
+            <Button.Resources>
+                <Style TargetType="{x:Type Border}">
+                    <Setter Property="CornerRadius" Value="10"/>
+                </Style>
+            </Button.Resources>
+        </Button>
     </StackPanel>
 </Window>

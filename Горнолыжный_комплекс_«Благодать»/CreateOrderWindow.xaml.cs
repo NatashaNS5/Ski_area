@@ -8,6 +8,7 @@ using Горнолыжный_комплекс__Благодать_.Models;
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas;
 using iText.Kernel.Font;
+using iText.IO.Font.Constants; 
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
@@ -35,7 +36,7 @@ namespace Горнолыжный_комплекс__Благодать_
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при инициализации: {ex.Message}");
+                MessageBox.Show($"Ошибка при инициализации: {ex.Message}\nInner Exception: {ex.InnerException?.Message}");
             }
         }
 
@@ -44,7 +45,20 @@ namespace Горнолыжный_комплекс__Благодать_
             using (var context = new ApplicationDbContext())
             {
                 var lastOrder = await context.Orders.OrderByDescending(o => o.OrderID).FirstOrDefaultAsync();
-                OrderNumberBox.Text = lastOrder != null ? (int.Parse(lastOrder.OrderCode.Split('/')[0]) + 1).ToString() + $"/{DateTime.Now:dd.MM.yyyy}" : $"1/{DateTime.Now:dd.MM.yyyy}";
+                if (lastOrder != null)
+                {
+                    if (!string.IsNullOrEmpty(lastOrder.OrderCode) && lastOrder.OrderCode.Contains('/'))
+                    {
+                        var parts = lastOrder.OrderCode.Split('/');
+                        if (parts.Length == 2 && int.TryParse(parts[0], out int orderNumber))
+                        {
+                            OrderNumberBox.Text = (orderNumber + 1).ToString() + $"/{DateTime.Now:dd.MM.yyyy}";
+                            return;
+                        }
+                    }
+                    MessageBox.Show($"Некорректный формат OrderCode у заказа с ID {lastOrder.OrderID}: '{lastOrder.OrderCode}'. Используется значение по умолчанию.");
+                }
+                OrderNumberBox.Text = $"1/{DateTime.Now:dd.MM.yyyy}";
             }
         }
 
@@ -79,7 +93,8 @@ namespace Горнолыжный_комплекс__Благодать_
 
             var filteredClients = _allClients
                 .Where(c =>
-                    (c.FullName?.ToLower().Contains(searchText) ?? false))
+                    (c.FullName?.ToLower().Contains(searchText) ?? false) ||
+                    (c.PassportData?.ToLower().Contains(searchText) ?? false))
                 .ToList();
 
             ClientComboBox.ItemsSource = filteredClients;
@@ -87,7 +102,7 @@ namespace Горнолыжный_комплекс__Благодать_
 
         private void ServiceSearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (_allServices == null) return; 
+            if (_allServices == null) return;
 
             string searchText = ServiceSearchBox.Text.ToLower();
             if (string.IsNullOrWhiteSpace(searchText) || searchText == "поиск услуги...")
@@ -141,46 +156,44 @@ namespace Горнолыжный_комплекс__Благодать_
             }
         }
 
-        private async void OrderNumberBox_KeyDown(object sender, KeyEventArgs e)
+        private void OrderNumberBox_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
-                string orderNumber = OrderNumberBox.Text;
-                using (var context = new ApplicationDbContext())
-                {
-                    if (await context.Orders.AnyAsync(o => o.OrderCode == orderNumber))
-                    {
-                        MessageBox.Show("Номер заказа уже существует.");
-                        return;
-                    }
-                }
                 GenerateBarcode_Click(sender, e);
             }
         }
 
         private async void GenerateBarcode_Click(object sender, RoutedEventArgs e)
         {
-            string orderNumber = OrderNumberBox.Text;
-            using (var context = new ApplicationDbContext())
+            try
             {
-                if (string.IsNullOrEmpty(orderNumber) || await context.Orders.AnyAsync(o => o.OrderCode == orderNumber))
+                string orderNumber = OrderNumberBox.Text;
+                using (var context = new ApplicationDbContext())
                 {
-                    MessageBox.Show("Номер заказа некорректен или уже существует.");
-                    return;
+                    if (string.IsNullOrEmpty(orderNumber) || await context.Orders.AnyAsync(o => o.OrderCode == orderNumber))
+                    {
+                        MessageBox.Show("Номер заказа некорректен или уже существует.");
+                        return;
+                    }
                 }
+
+                var order = new Order
+                {
+                    OrderCode = orderNumber,
+                    CreationDate = DateTime.Now,
+                    CreationTime = DateTime.Now.TimeOfDay,
+                    Status = "Новая",
+                    RentalDurationMinutes = 120
+                };
+
+                string barcodeText = $"{order.OrderCode.Replace("/", "")}{order.CreationDate:yyyyMMddHHmmss}{order.RentalDurationMinutes}{GenerateRandomCode(6)}";
+                GenerateBarcodePdf(barcodeText, orderNumber);
             }
-
-            var order = new Order
+            catch (Exception ex)
             {
-                OrderCode = orderNumber,
-                CreationDate = DateTime.Now,
-                CreationTime = DateTime.Now.TimeOfDay,
-                Status = "Новая",
-                RentalDurationMinutes = 120
-            };
-
-            string barcodeText = $"{order.OrderCode.Replace("/", "")}{order.CreationDate:yyyyMMddHHmmss}{order.RentalDurationMinutes}{GenerateRandomCode(6)}";
-            GenerateBarcodePdf(barcodeText, orderNumber);
+                MessageBox.Show($"Ошибка при генерации штрих-кода: {ex.Message}\nInner Exception: {ex.InnerException?.Message}");
+            }
         }
 
         private string GenerateRandomCode(int length)
@@ -193,49 +206,56 @@ namespace Горнолыжный_комплекс__Благодать_
 
         private void GenerateBarcodePdf(string barcodeText, string orderNumber)
         {
-            using (var stream = new MemoryStream())
+            try
             {
-                using (var writer = new PdfWriter(stream))
+                using (var stream = new MemoryStream())
                 {
-                    using (var pdf = new PdfDocument(writer))
+                    using (var writer = new PdfWriter(stream))
                     {
-                        var page = pdf.AddNewPage();
-                        var canvas = new PdfCanvas(page);
-                        float x = 10, y = page.GetPageSize().GetHeight() - 30;
-                        float barHeight = 22.85f * 2.83465f;
-                        float digitHeight = 2.75f * 2.83465f;
-                        float spacing = 0.2f * 2.83465f;
-                        float leftMargin = 3.63f * 2.83465f;
-                        float rightMargin = 2.31f * 2.83465f;
-
-                        canvas.SetFillColorRgb(0, 0, 0);
-                        canvas.Rectangle(x, y - barHeight - 1.65f * 2.83465f, 0.33f * 2.83465f, barHeight + 1.65f * 2.83465f);
-                        canvas.Fill();
-                        x += leftMargin;
-
-                        foreach (char c in barcodeText)
+                        using (var pdf = new PdfDocument(writer))
                         {
-                            float width = c == '0' ? 1.35f * 2.83465f : (0.15f * (c - '0')) * 2.83465f;
-                            if (c != '0')
-                            {
-                                canvas.SetFillColorRgb(0, 0, 0);
-                                canvas.Rectangle(x, y - barHeight, width, barHeight);
-                                canvas.Fill();
-                            }
-                            canvas.MoveText(x, y - barHeight - digitHeight - 0.165f * 2.83465f);
-                            canvas.SetFontAndSize(PdfFontFactory.CreateFont(), 8);
-                            canvas.ShowText(c.ToString());
-                            x += width + spacing;
-                        }
+                            var page = pdf.AddNewPage();
+                            var canvas = new PdfCanvas(page);
+                            float x = 10, y = page.GetPageSize().GetHeight() - 30;
+                            float barHeight = 22.85f * 2.83465f;
+                            float digitHeight = 2.75f * 2.83465f;
+                            float spacing = 0.2f * 2.83465f;
+                            float leftMargin = 3.63f * 2.83465f;
+                            float rightMargin = 2.31f * 2.83465f;
 
-                        canvas.SetFillColorRgb(0, 0, 0);
-                        canvas.Rectangle(x, y - barHeight - 1.65f * 2.83465f, 0.33f * 2.83465f, barHeight + 1.65f * 2.83465f);
-                        canvas.Fill();
+                            canvas.SetFillColorRgb(0, 0, 0);
+                            canvas.Rectangle(x, y - barHeight - 1.65f * 2.83465f, 0.33f * 2.83465f, barHeight + 1.65f * 2.83465f);
+                            canvas.Fill();
+                            x += leftMargin;
+
+                            foreach (char c in barcodeText)
+                            {
+                                float width = c == '0' ? 1.35f * 2.83465f : (0.15f * (c - '0')) * 2.83465f;
+                                if (c != '0')
+                                {
+                                    canvas.SetFillColorRgb(0, 0, 0);
+                                    canvas.Rectangle(x, y - barHeight, width, barHeight);
+                                    canvas.Fill();
+                                }
+                                canvas.MoveText(x, y - barHeight - digitHeight - 0.165f * 2.83465f);
+                                canvas.SetFontAndSize(PdfFontFactory.CreateFont(StandardFonts.HELVETICA), 8); 
+                                canvas.ShowText(c.ToString());
+                                x += width + spacing;
+                            }
+
+                            canvas.SetFillColorRgb(0, 0, 0);
+                            canvas.Rectangle(x, y - barHeight - 1.65f * 2.83465f, 0.33f * 2.83465f, barHeight + 1.65f * 2.83465f);
+                            canvas.Fill();
+                        }
+                        File.WriteAllBytes($"Barcode_{orderNumber.Replace("/", "_")}.pdf", stream.ToArray());
                     }
-                    File.WriteAllBytes($"Barcode_{orderNumber.Replace("/", "_")}.pdf", stream.ToArray());
                 }
+                MessageBox.Show($"Штрих-код сохранен в Barcode_{orderNumber.Replace("/", "_")}.pdf");
             }
-            MessageBox.Show($"Штрих-код сохранен в Barcode_{orderNumber.Replace("/", "_")}.pdf");
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при генерации PDF: {ex.Message}\nInner Exception: {ex.InnerException?.Message}");
+            }
         }
 
         private void AddClient_Click(object sender, RoutedEventArgs e)
@@ -268,28 +288,65 @@ namespace Горнолыжный_комплекс__Благодать_
                         return;
                     }
 
+                    string orderCode = OrderNumberBox.Text;
+                    if (string.IsNullOrEmpty(orderCode) || !orderCode.Contains('/') || orderCode.Split('/').Length != 2 || !int.TryParse(orderCode.Split('/')[0], out _))
+                    {
+                        MessageBox.Show("Номер заказа должен быть в формате 'число/дата' (например, '1/31.05.2025').");
+                        return;
+                    }
+
+                    if (await context.Orders.AnyAsync(o => o.OrderCode == orderCode))
+                    {
+                        MessageBox.Show("Номер заказа уже существует.");
+                        return;
+                    }
+
                     var selectedClient = (Client)ClientComboBox.SelectedItem;
                     var selectedServices = ServicesListBox.SelectedItems.Cast<Service>().ToList();
                     var totalCostText = TotalCost.Text;
 
+                    foreach (var service in selectedServices)
+                    {
+                        if (!await context.Services.AnyAsync(s => s.ServiceID == service.ServiceID))
+                        {
+                            MessageBox.Show($"Услуга с ID {service.ServiceID} не найдена в базе данных.");
+                            return;
+                        }
+                    }
+
+                    int nextOrderID = 1;
+                    var lastOrder = await context.Orders.OrderByDescending(o => o.OrderID).FirstOrDefaultAsync();
+                    if (lastOrder != null)
+                    {
+                        nextOrderID = lastOrder.OrderID + 1;
+                    }
+
                     var order = new Order
                     {
-                        OrderCode = OrderNumberBox.Text,
+                        OrderID = nextOrderID,
+                        OrderCode = orderCode,
                         CreationDate = DateTime.Now,
                         CreationTime = DateTime.Now.TimeOfDay,
                         ClientID = selectedClient.ClientID,
                         Status = "Новая",
                         RentalDurationMinutes = 120,
-                        OrderServices = selectedServices
-                            .Select(s => new OrderService { ServiceID = s.ServiceID })
-                            .ToList()
+                        OrderServices = new List<OrderService>()
                     };
+
+                    foreach (var service in selectedServices)
+                    {
+                        var orderService = new OrderService
+                        {
+                            OrderID = nextOrderID, 
+                            ServiceID = service.ServiceID
+                        };
+                        order.OrderServices.Add(orderService);
+                    }
 
                     context.Orders.Add(order);
                     await context.SaveChangesAsync();
 
-                    string data = $"data=base64({Convert.ToBase64String(Encoding.UTF8.GetBytes($"дата_заказа={order.CreationDate:yyyy-MM-dd}T{order.CreationTime}&номер_заказа={order.OrderCode}"))}";
-                    File.WriteAllText($"Order_{order.OrderCode.Replace("/", "_")}.txt", $"https://wsrussia.ru/?{data}");
+                    GenerateBarcode_Click(sender, e);
 
                     using (var pdfStream = new MemoryStream())
                     {
@@ -301,7 +358,7 @@ namespace Горнолыжный_комплекс__Благодать_
                                 var canvas = new PdfCanvas(page);
                                 float y = page.GetPageSize().GetHeight() - 30;
                                 canvas.MoveText(10, y);
-                                canvas.SetFontAndSize(PdfFontFactory.CreateFont(), 12);
+                                canvas.SetFontAndSize(PdfFontFactory.CreateFont(StandardFonts.HELVETICA), 12);
                                 canvas.ShowText($"Заказ: {order.OrderCode}");
                                 canvas.MoveText(0, -20);
                                 canvas.ShowText($"Клиент: {selectedClient.FullName}");
@@ -314,7 +371,10 @@ namespace Горнолыжный_комплекс__Благодать_
                         }
                     }
 
-                    MessageBox.Show("Заказ сохранен.");
+                    string data = $"data=base64({Convert.ToBase64String(Encoding.UTF8.GetBytes($"дата_заказа={order.CreationDate:yyyy-MM-dd}T{order.CreationTime}&номер_заказа={order.OrderCode}"))}";
+                    File.WriteAllText($"Order_{order.OrderCode.Replace("/", "_")}.txt", $"https://wsrussia.ru/?{data}");
+
+                    MessageBox.Show("Заказ успешно создан, штрих-код и документы сгенерированы.");
                     Close();
                 }
             }

@@ -16,7 +16,13 @@
         <StackPanel Grid.Row="1" Margin="20">
             <TextBlock Text="Штрих-код заказа" Foreground="#494C51"/>
             <TextBox x:Name="BarcodeBox" Margin="0,5"/>
-            <Button Content="Принять" Background="#498C51" Foreground="#FFFFFF" Margin="0,10" Click="ReturnEquipment_Click"/>
+            <Button Content="Принять" Background="#498C51" Foreground="#FFFFFF" Margin="0,10" Click="ReturnEquipment_Click">
+                <Button.Resources>
+                    <Style TargetType="{x:Type Border}">
+                        <Setter Property="CornerRadius" Value="10"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
             <TextBlock x:Name="StatusMessage" Foreground="#494C51" TextAlignment="Center"/>
         </StackPanel>
     </Grid>
