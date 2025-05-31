@@ -19,10 +19,34 @@
             <TextBlock x:Name="SessionTimer" Margin="10,0" Foreground="#494C51"/>
         </StackPanel>
         <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
-            <Button x:Name="CreateOrderButton" Content="Создать заказ" Background="#498C51" Foreground="#FFFFFF" Margin="5" Click="CreateOrder_Click" Visibility="Collapsed"/>
-            <Button x:Name="ReturnEquipmentButton" Content="Принять оборудование" Background="#498C51" Foreground="#FFFFFF" Margin="5" Click="ReturnEquipment_Click" Visibility="Collapsed"/>
-            <Button x:Name="ViewHistoryButton" Content="История входа" Background="#498C51" Foreground="#FFFFFF" Margin="5" Click="ViewHistory_Click" Visibility="Collapsed"/>
-            <Button x:Name="ManageConsumablesButton" Content="Расходные материалы" Background="#498C51" Foreground="#FFFFFF" Margin="5" Click="ManageConsumables_Click" Visibility="Collapsed"/>
+            <Button x:Name="CreateOrderButton" Content="Создать заказ" Background="#498C51" Foreground="#FFFFFF" Margin="5" Click="CreateOrder_Click" Visibility="Collapsed">
+                <Button.Resources>
+                    <Style TargetType="{x:Type Border}">
+                        <Setter Property="CornerRadius" Value="10"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
+            <Button x:Name="ReturnEquipmentButton" Content="Принять оборудование" Background="#498C51" Foreground="#FFFFFF" Margin="5" Click="ReturnEquipment_Click" Visibility="Collapsed">
+                <Button.Resources>
+                    <Style TargetType="{x:Type Border}">
+                        <Setter Property="CornerRadius" Value="10"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
+            <Button x:Name="ViewHistoryButton" Content="История входа" Background="#498C51" Foreground="#FFFFFF" Margin="5" Click="ViewHistory_Click" Visibility="Collapsed">
+                <Button.Resources>
+                    <Style TargetType="{x:Type Border}">
+                        <Setter Property="CornerRadius" Value="10"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
+            <Button x:Name="ManageConsumablesButton" Content="Расходные материалы" Background="#498C51" Foreground="#FFFFFF" Margin="5" Click="ManageConsumables_Click" Visibility="Collapsed">
+                <Button.Resources>
+                    <Style TargetType="{x:Type Border}">
+                        <Setter Property="CornerRadius" Value="10"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
         </StackPanel>
         <Button Grid.Row="2" Content="Выход" Background="#498C51" Foreground="#FFFFFF" Margin="10" Click="Logout_Click">
             <Button.Resources>
